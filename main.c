@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 typedef struct {
     int id;
@@ -6,7 +7,22 @@ typedef struct {
     char startDate[100];
     char endDate[100];
 } Task;
+int find_max_id() {
+    FILE *file = fopen("./tasks.txt", "r");
+    if (file == NULL) {
+        return 0; // Файл не существует, начинаем с ID 1
+    }
 
+    int max_id = 0;
+    Task task;
+    while (fscanf(file, "%d,%499[^,],%99[^,],%99[^,\n]", &task.id, task.name, task.startDate, task.endDate) == 4) {
+        if (task.id > max_id) {
+            max_id = task.id;
+        }
+    }
+    fclose(file);
+    return max_id;
+}
 void print_task_header() {
     printf("\n%-6s | %-30s | %-15s | %-15s\n", "ID", "Name", "Start Date", "End Date");
     printf("------+--------------------------------+-----------------+-----------------\n");
@@ -16,15 +32,16 @@ void print_task(Task task) {
     printf("%-6d | %-30s | %-15s | %-15s\n", task.id, task.name, task.startDate, task.endDate);
 }
 
-void read_tasks_from_file(){
+void read_tasks_from_file() {
     FILE *file = fopen("./tasks.txt", "r");
-    if(file == NULL) {
+    if (file == NULL) {
         perror("Error opening file");
         return;
     }
-    Task task;
+
     print_task_header();
-    while(fscanf(file, "%d %500s %100s %100s", &task.id, task.name, task.startDate, task.endDate) == 4) {
+    Task task;
+    while (fscanf(file, "%d,%499[^,],%99[^,],%99[^,\n]", &task.id, task.name, task.startDate, task.endDate) == 4) {
         print_task(task);
     }
     fclose(file);
@@ -36,26 +53,37 @@ void save_task_to_file(Task task) {
         perror("Error opening file");
         return;
     }
-1
-    // Добавляем '\n' в конце каждой записи для перехода на новую строку
     fprintf(file, "%d,%s,%s,%s\n", task.id, task.name, task.startDate, task.endDate);
-
     fclose(file);
 }
 // Создание задачи пользователем
+void trim_newline(char *str) {
+    int len = strlen(str);
+    if (len > 0 && str[len - 1] == '\n') {
+        str[len - 1] = '\0';
+    }
+}
+
 void create_task() {
     static int current_id = 1;
     Task newTask;
 
     newTask.id = current_id++;
-    printf("Enter task name: ");
-    getchar();
+
+    printf("Type task name: ");
     fgets(newTask.name, sizeof(newTask.name), stdin);
-    printf("Enter start date (YYYY-MM-DD): ");
+    trim_newline(newTask.name); // Удаляем символ новой строки
+
+    printf("Type task start Date (YYYY-MM-DD): ");
     fgets(newTask.startDate, sizeof(newTask.startDate), stdin);
-    printf("Enter end date (YYYY-MM-DD): ");
+    trim_newline(newTask.startDate); // Удаляем символ новой строки
+
+    printf("Type task end Date (YYYY-MM-DD): ");
     fgets(newTask.endDate, sizeof(newTask.endDate), stdin);
+    trim_newline(newTask.endDate); // Удаляем символ новой строки
+
     save_task_to_file(newTask);
+    read_tasks_from_file();
 }
 // Удаление конкретной задачи из файла
 void delete_task(int id) {
@@ -132,23 +160,30 @@ void modify_task(){
 }
 int main() {
     int UserSelection;
+    int current_id = find_max_id() + 1;
     do {
         printf("\nTask Manager\n");
-        printf("[1] Create New Task\n[2] Delete Task\n[3] Modify Task\n[4] Exit\n");
+        printf("[1] Create New Task\n[2] Delete Task\n[3] Modify Task\n[4] Print Current Tasks\n[5] Exit\n");
         printf("Select an option: ");
         scanf("%d", &UserSelection);
+        getchar(); // Очистка буфера ввода
 
         if(UserSelection == 1) {
-            create_task();
+            create_task(&current_id);
         } else if(UserSelection == 2) {
             int id;
             printf("Enter task ID to delete: ");
             scanf("%d", &id);
+            getchar(); // Очистка буфера ввода
             delete_task(id);
+            read_tasks_from_file();
         } else if(UserSelection == 3) {
             modify_task();
+            read_tasks_from_file();
+        } else if(UserSelection == 4){
+            read_tasks_from_file();
         }
-    } while(UserSelection != 4);
+    } while(UserSelection != 5);
 
     return 0;
 }
